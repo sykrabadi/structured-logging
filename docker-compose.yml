@@ -1,0 +1,51 @@
+version: "3.7"
+services:
+  loki:
+    image: grafana/loki:3.4.2
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./config/loki-config.yaml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - app
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_BASIC_ENABLED=false
+      - GF_FEATURE_TOGGLES_ENABLE=accessControlOnCall
+      - GF_INSTALL_PLUGINS=https://storage.googleapis.com/integration-artifacts/grafana-lokiexplore-app/grafana-lokiexplore-app-latest.zip;grafana-lokiexplore-app
+    ports:
+      - 3000:3000/tcp
+    volumes:
+      - ./grafana:/etc/grafana/provisioning
+    networks:
+      - app
+  fluent-bit:
+    image: fluent/fluent-bit:5.0.2
+    command: /fluent-bit/bin/fluent-bit --config=/fluent-bit/etc/conf/fluent-bit.yaml
+    volumes:
+      - ./config/fluent-bit.yaml:/fluent-bit/etc/conf/fluent-bit.yaml
+    depends_on:
+      - loki
+    networks:
+      - app
+  api:
+    build:
+      dockerfile: ./dockerfile
+    ports:
+      - '8083:8083'
+    networks:
+      - app
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 'localhost:24224'
+    depends_on:
+      - fluent-bit
+      - loki
+
+networks:
+  app:

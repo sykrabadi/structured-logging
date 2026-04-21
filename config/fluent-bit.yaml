@@ -1,0 +1,11 @@
+pipeline:
+  input:
+    - name: forward
+      listen: 0.0.0.0
+      port: 24424
+  
+  output:
+    - name: loki
+      host: loki
+      uri: /loki/api/v1/push
+      port: 3100
